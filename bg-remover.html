@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>透過職人 - 背景透過 & 境界線強調ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: #1a2236;
+    --bg-hover: #243049;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.25);
+    --accent-dim: #0c4a6e;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border: #1e293b;
+    --danger: #f87171;
+    --success: #34d399;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Zen Kaku Gothic New', 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 20%, rgba(56,189,248,0.06), transparent),
+      radial-gradient(ellipse 500px 500px at 80% 80%, rgba(99,102,241,0.05), transparent);
+    z-index: -1;
+    animation: bgShift 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes bgShift {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+
+  header {
+    padding: 28px 32px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(56,189,248,0.03), transparent);
+  }
+
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-weight: 400;
+  }
+
+  .app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    min-height: calc(100vh - 100px);
+  }
+
+  /* --- Sidebar Controls --- */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .panel:hover {
+    border-color: rgba(56,189,248,0.2);
+  }
+
+  .panel-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Upload Area */
+  .upload-zone {
+    border: 2px dashed var(--text-muted);
+    border-radius: var(--radius);
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: transparent;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(56,189,248,0.05);
+  }
+
+  .upload-zone svg {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
+    stroke: var(--text-muted);
+    transition: stroke 0.3s;
+  }
+
+  .upload-zone:hover svg { stroke: var(--accent); }
+
+  .upload-zone p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .upload-zone .hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  #fileInput { display: none; }
+
+  /* Controls */
+  .control-group {
+    margin-bottom: 16px;
+  }
+
+  .control-group:last-child { margin-bottom: 0; }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .control-group label span.value {
+    font-family: 'Outfit', monospace;
+    color: var(--accent);
+    font-size: 0.8rem;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-glow);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  /* Color Picker Row */
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .color-preview input[type="color"] {
+    position: absolute;
+    inset: -8px;
+    width: calc(100% + 16px);
+    height: calc(100% + 16px);
+    border: none;
+    cursor: pointer;
+  }
+
+  .color-hex {
+    font-family: 'Outfit', monospace;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    flex: 1;
+  }
+
+  .eyedropper-btn {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .eyedropper-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .eyedropper-btn.active {
+    border-color: var(--accent);
+    background: rgba(56,189,248,0.1);
+    color: var(--accent);
+  }
+
+  /* Mode Tabs */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: center;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mode-tab.active {
+    background: var(--bg-card);
+    color: var(--accent);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .mode-tab:hover:not(.active) { color: var(--text-secondary); }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    color: #0f172a;
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-group .btn { flex: 1; }
+
+  /* --- Main Canvas Area --- */
+  .main-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .canvas-container {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 500px;
+  }
+
+  /* Checkerboard background for transparency */
+  .canvas-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(45deg, #1a1f2e 25%, transparent 25%),
+      linear-gradient(-45deg, #1a1f2e 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1a1f2e 75%),
+      linear-gradient(-45deg, transparent 75%, #1a1f2e 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    opacity: 0.5;
+  }
+
+  .canvas-container canvas {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .placeholder-msg {
+    position: relative;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .placeholder-msg svg {
+    width: 64px;
+    height: 64px;
+    stroke: var(--text-muted);
+    opacity: 0.4;
+    margin-bottom: 12px;
+  }
+
+  .placeholder-msg p {
+    font-size: 0.9rem;
+  }
+
+  /* Status Bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding: 0 4px;
+  }
+
+  .status-bar .file-info { font-family: 'Outfit', monospace; }
+
+  /* View Toggle */
+  .view-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .view-btn {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .view-btn.active {
+    background: var(--bg-hover);
+    color: var(--accent);
+  }
+
+  /* Processing overlay */
+  .processing-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,14,23,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+
+  .processing-overlay.show { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .processing-overlay p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  /* Toast notification */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--success);
+    border-radius: 8px;
+    color: var(--success);
+    font-size: 0.85rem;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 100;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .app-container {
+      grid-template-columns: 1fr;
+      padding: 12px;
+    }
+    .canvas-container { min-height: 350px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>透過職人</h1>
+  <p>PNG背景透過 & 境界線強調ツール</p>
+</header>
+
+<div class="app-container">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Upload -->
+    <div class="panel">
+      <div class="panel-title">画像を読み込む</div>
+      <div class="upload-zone" id="uploadZone">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>クリックまたはドラッグ&ドロップ</p>
+        <p class="hint">PNG / JPG / WebP 対応</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <!-- Background Removal -->
+    <div class="panel">
+      <div class="panel-title">背景透過</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="color" onclick="setMode('color')">色指定</button>
+        <button class="mode-tab" data-mode="luminance" onclick="setMode('luminance')">明るさ</button>
+      </div>
+
+      <div id="colorModeControls">
+        <div class="control-group">
+          <label>透過する色</label>
+          <div class="color-row">
+            <div class="color-preview" id="colorPreview" style="background:#ffffff">
+              <input type="color" id="bgColor" value="#ffffff" onchange="updateColorPreview()">
+            </div>
+            <input type="text" class="color-hex" id="colorHex" value="#ffffff" oninput="updateFromHex()">
+            <button class="eyedropper-btn" id="eyedropperBtn" onclick="toggleEyedropper()">🎯 抽出</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>許容範囲 <span class="value" id="toleranceVal">30</span></label>
+          <input type="range" id="tolerance" min="0" max="100" value="30" oninput="updateVal('tolerance','toleranceVal')">
+        </div>
+      </div>
+
+      <div id="luminanceModeControls" style="display:none;">
+        <div class="control-group">
+          <label>明るさしきい値 <span class="value" id="lumThreshVal">200</span></label>
+          <input type="range" id="lumThreshold" min="0" max="255" value="200" oninput="updateVal('lumThreshold','lumThreshVal')">
+        </div>
+        <div class="control-group">
+          <label>フェード幅 <span class="value" id="lumFadeVal">20</span></label>
+          <input type="range" id="lumFade" min="0" max="80" value="20" oninput="updateVal('lumFade','lumFadeVal')">
+        </div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <button class="btn btn-primary" id="removeBtn" onclick="removeBackground()" disabled>背景を透過する</button>
+      </div>
+    </div>
+
+    <!-- Alpha Boundary Cleanup -->
+    <div class="panel">
+      <div class="panel-title">境界線クリーンアップ</div>
+      <div class="control-group">
+        <label>アルファしきい値 <span class="value" id="alphaThreshVal">128</span></label>
+        <input type="range" id="alphaThreshold" min="1" max="254" value="128" oninput="updateVal('alphaThreshold','alphaThreshVal')">
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-top:2px;">
+          <span>← 多く残す</span><span>多く削る →</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>境界の調整 <span class="value" id="edgeAdjustVal">0</span>px</label>
+        <input type="range" id="edgeAdjust" min="-5" max="5" value="0" step="1" oninput="updateVal('edgeAdjust','edgeAdjustVal')">
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-top:2px;">
+          <span>← 広げる</span><span>縮める →</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="defringe" checked style="accent-color:var(--accent);width:16px;height:16px;">
+            フリンジ除去（色にじみ補正）
+          </span>
+        </label>
+      </div>
+      <div style="margin-top: 14px;">
+        <button class="btn btn-primary" id="edgeBtn" onclick="cleanupAlphaBoundary()" disabled>境界線を処理する</button>
+      </div>
+    </div>
+
+    <!-- Edge Color Normalize -->
+    <div class="panel">
+      <div class="panel-title">境界カラー補正</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-ecmode="auto" onclick="setEdgeColorMode('auto')">自動均一化</button>
+        <button class="mode-tab" data-ecmode="manual" onclick="setEdgeColorMode('manual')">色を指定</button>
+      </div>
+
+      <div id="ecAutoControls">
+        <div class="control-group">
+          <label>均一化の強さ <span class="value" id="ecBlendVal">80</span>%</label>
+          <input type="range" id="ecBlend" min="0" max="100" value="80" oninput="updateVal('ecBlend','ecBlendVal')">
+          <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-top:2px;">
+            <span>← 元の色を残す</span><span>揃える →</span>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>処理する深さ <span class="value" id="ecDepthVal">2</span>px</label>
+          <input type="range" id="ecDepth" min="1" max="6" value="2" step="1" oninput="updateVal('ecDepth','ecDepthVal')">
+        </div>
+      </div>
+
+      <div id="ecManualControls" style="display:none;">
+        <div class="control-group">
+          <label>輪郭の色</label>
+          <div class="color-row">
+            <div class="color-preview" id="ecColorPreview" style="background:#000000">
+              <input type="color" id="ecColor" value="#000000" onchange="document.getElementById('ecColorPreview').style.background=this.value;document.getElementById('ecColorHex').value=this.value;">
+            </div>
+            <input type="text" class="color-hex" id="ecColorHex" value="#000000" oninput="let h=this.value;if(/^#[0-9a-fA-F]{6}$/.test(h)){document.getElementById('ecColor').value=h;document.getElementById('ecColorPreview').style.background=h;}">
+            <button class="eyedropper-btn" id="ecEyedropperBtn" onclick="toggleEcEyedropper()">🎯 抽出</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>適用の強さ <span class="value" id="ecManualBlendVal">100</span>%</label>
+          <input type="range" id="ecManualBlend" min="0" max="100" value="100" oninput="updateVal('ecManualBlend','ecManualBlendVal')">
+        </div>
+        <div class="control-group">
+          <label>処理する深さ <span class="value" id="ecManualDepthVal">1</span>px</label>
+          <input type="range" id="ecManualDepth" min="1" max="6" value="1" step="1" oninput="updateVal('ecManualDepth','ecManualDepthVal')">
+        </div>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <button class="btn btn-primary" id="ecBtn" onclick="normalizeEdgeColor()" disabled>境界色を整える</button>
+      </div>
+    </div>
+
+    <!-- Color Decontamination -->
+    <div class="panel">
+      <div class="panel-title">色かぶり除去</div>
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+        背景色が混ざった境界ピクセルから背景色成分を除去し、本来の色（髪色など）を復元します
+      </p>
+      <div class="control-group">
+        <label>除去する背景色</label>
+        <div class="color-row">
+          <div class="color-preview" id="deconColorPreview" style="background:#000000">
+            <input type="color" id="deconColor" value="#000000" onchange="document.getElementById('deconColorPreview').style.background=this.value;document.getElementById('deconColorHex').value=this.value;">
+          </div>
+          <input type="text" class="color-hex" id="deconColorHex" value="#000000" oninput="let h=this.value;if(/^#[0-9a-fA-F]{6}$/.test(h)){document.getElementById('deconColor').value=h;document.getElementById('deconColorPreview').style.background=h;}">
+          <button class="eyedropper-btn" id="deconEyedropperBtn" onclick="toggleDeconEyedropper()">🎯 抽出</button>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>復元の強さ <span class="value" id="deconStrengthVal">100</span>%</label>
+        <input type="range" id="deconStrength" min="0" max="100" value="100" oninput="updateVal('deconStrength','deconStrengthVal')">
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-top:2px;">
+          <span>← 控えめ</span><span>強く復元 →</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>処理する深さ <span class="value" id="deconDepthVal">3</span>px</label>
+        <input type="range" id="deconDepth" min="1" max="10" value="3" step="1" oninput="updateVal('deconDepth','deconDepthVal')">
+      </div>
+      <div class="control-group">
+        <label>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="deconPreThreshold" style="accent-color:var(--accent);width:16px;height:16px;">
+            半透明ピクセルも先に復元（しきい値前に実行）
+          </span>
+        </label>
+      </div>
+      <div style="margin-top: 14px;">
+        <button class="btn btn-primary" id="deconBtn" onclick="decontaminateColor()" disabled>色かぶりを除去する</button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel">
+      <div class="panel-title">操作</div>
+      <div class="btn-group" style="margin-bottom:8px;">
+        <button class="btn btn-secondary" id="undoBtn" onclick="undo()" disabled>↩ 元に戻す</button>
+        <button class="btn btn-secondary" id="resetBtn" onclick="resetImage()" disabled>🔄 リセット</button>
+      </div>
+      <button class="btn btn-primary" id="downloadBtn" onclick="downloadImage()" disabled>💾 PNGで保存</button>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="main-area">
+    <div class="status-bar">
+      <span class="file-info" id="fileInfo">画像を読み込んでください</span>
+      <div class="view-toggle">
+        <button class="view-btn active" onclick="setView('result')">結果</button>
+        <button class="view-btn" onclick="setView('original')">元画像</button>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+      <div class="placeholder-msg" id="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p>画像をアップロードして開始</p>
+      </div>
+      <canvas id="mainCanvas" style="display:none;"></canvas>
+      <div class="processing-overlay" id="processingOverlay">
+        <div class="spinner"></div>
+        <p id="processingText">処理中...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // --- State ---
+  let originalImageData = null;
+  let currentImageData = null;
+  let historyStack = [];
+  let currentMode = 'color';
+  let isEyedropperActive = false;
+
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  // --- Upload ---
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files.length) loadImage(e.target.files[0]); });
+
+  function loadImage(file) {
+    if (!file.type.startsWith('image/')) { showToast('画像ファイルを選択してください', true); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        historyStack = [];
+
+        canvas.style.display = 'block';
+        document.getElementById('placeholder').style.display = 'none';
+        document.getElementById('fileInfo').textContent = `${file.name}  |  ${img.width} × ${img.height}px`;
+        enableButtons(true);
+        showToast('画像を読み込みました');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function enableButtons(enabled) {
+    document.getElementById('removeBtn').disabled = !enabled;
+    document.getElementById('edgeBtn').disabled = !enabled;
+    document.getElementById('ecBtn').disabled = !enabled;
+    document.getElementById('deconBtn').disabled = !enabled;
+    document.getElementById('resetBtn').disabled = !enabled;
+    document.getElementById('downloadBtn').disabled = !enabled;
+  }
+
+  // --- Eyedropper ---
+  function toggleEyedropper() {
+    isEyedropperActive = !isEyedropperActive;
+    const btn = document.getElementById('eyedropperBtn');
+    btn.classList.toggle('active', isEyedropperActive);
+    canvas.style.cursor = isEyedropperActive ? 'crosshair' : 'default';
+  }
+
+  canvas.addEventListener('click', e => {
+    if (!isEyedropperActive || !currentImageData) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const idx = (y * canvas.width + x) * 4;
+    const r = currentImageData.data[idx];
+    const g = currentImageData.data[idx + 1];
+    const b = currentImageData.data[idx + 2];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('bgColor').value = hex;
+    document.getElementById('colorHex').value = hex;
+    document.getElementById('colorPreview').style.background = hex;
+    toggleEyedropper();
+    showToast(`色を取得しました: ${hex}`);
+  });
+
+  // --- Mode ---
+  function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    document.getElementById('colorModeControls').style.display = mode === 'color' ? 'block' : 'none';
+    document.getElementById('luminanceModeControls').style.display = mode === 'luminance' ? 'block' : 'none';
+  }
+
+  // --- View Toggle ---
+  function setView(view) {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    if (view === 'original' && originalImageData) {
+      ctx.putImageData(originalImageData, 0, 0);
+    } else if (currentImageData) {
+      ctx.putImageData(currentImageData, 0, 0);
+    }
+  }
+
+  // --- Helpers ---
+  function updateVal(sliderId, displayId) {
+    document.getElementById(displayId).textContent = document.getElementById(sliderId).value;
+  }
+
+  function updateColorPreview() {
+    const hex = document.getElementById('bgColor').value;
+    document.getElementById('colorPreview').style.background = hex;
+    document.getElementById('colorHex').value = hex;
+  }
+
+  function updateFromHex() {
+    const hex = document.getElementById('colorHex').value;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      document.getElementById('bgColor').value = hex;
+      document.getElementById('colorPreview').style.background = hex;
+    }
+  }
+
+  function pushHistory() {
+    historyStack.push(new ImageData(new Uint8ClampedArray(currentImageData.data), currentImageData.width, currentImageData.height));
+    document.getElementById('undoBtn').disabled = false;
+    if (historyStack.length > 20) historyStack.shift();
+  }
+
+  function undo() {
+    if (historyStack.length === 0) return;
+    currentImageData = historyStack.pop();
+    ctx.putImageData(currentImageData, 0, 0);
+    document.getElementById('undoBtn').disabled = historyStack.length === 0;
+    showToast('操作を取り消しました');
+  }
+
+  function resetImage() {
+    if (!originalImageData) return;
+    currentImageData = new ImageData(new Uint8ClampedArray(originalImageData.data), originalImageData.width, originalImageData.height);
+    ctx.putImageData(currentImageData, 0, 0);
+    historyStack = [];
+    document.getElementById('undoBtn').disabled = true;
+    showToast('画像をリセットしました');
+  }
+
+  function showToast(msg, isError = false) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.style.borderColor = isError ? 'var(--danger)' : 'var(--success)';
+    toast.style.color = isError ? 'var(--danger)' : 'var(--success)';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  function showProcessing(text) {
+    document.getElementById('processingText').textContent = text;
+    document.getElementById('processingOverlay').classList.add('show');
+  }
+
+  function hideProcessing() {
+    document.getElementById('processingOverlay').classList.remove('show');
+  }
+
+  // --- Background Removal ---
+  function removeBackground() {
+    if (!currentImageData) return;
+    pushHistory();
+    showProcessing('背景を透過しています...');
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const data = new Uint8ClampedArray(currentImageData.data);
+        const w = currentImageData.width;
+        const h = currentImageData.height;
+
+        if (currentMode === 'color') {
+          const hex = document.getElementById('bgColor').value;
+          const tr = parseInt(hex.slice(1, 3), 16);
+          const tg = parseInt(hex.slice(3, 5), 16);
+          const tb = parseInt(hex.slice(5, 7), 16);
+          const tol = parseInt(document.getElementById('tolerance').value);
+
+          for (let i = 0; i < data.length; i += 4) {
+            const dr = data[i] - tr;
+            const dg = data[i + 1] - tg;
+            const db = data[i + 2] - tb;
+            const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+            if (dist <= tol) {
+              data[i + 3] = 0;
+            } else if (dist <= tol + 30) {
+              const alpha = Math.round(((dist - tol) / 30) * data[i + 3]);
+              data[i + 3] = alpha;
+            }
+          }
+        } else {
+          // Luminance mode
+          const threshold = parseInt(document.getElementById('lumThreshold').value);
+          const fade = parseInt(document.getElementById('lumFade').value);
+          for (let i = 0; i < data.length; i += 4) {
+            const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+            if (lum >= threshold) {
+              data[i + 3] = 0;
+            } else if (lum >= threshold - fade) {
+              const alpha = Math.round(((threshold - lum) / fade) * data[i + 3]);
+              data[i + 3] = alpha;
+            }
+          }
+        }
+
+        currentImageData = new ImageData(data, w, h);
+        ctx.clearRect(0, 0, w, h);
+        ctx.putImageData(currentImageData, 0, 0);
+        hideProcessing();
+        showToast('背景を透過しました');
+      }, 50);
+    });
+  }
+
+  // --- Alpha Boundary Cleanup ---
+  function cleanupAlphaBoundary() {
+    if (!currentImageData) return;
+    pushHistory();
+    showProcessing('境界線を処理しています...');
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const src = currentImageData.data;
+        const w = currentImageData.width;
+        const h = currentImageData.height;
+        const result = new Uint8ClampedArray(src);
+        const alphaThresh = parseInt(document.getElementById('alphaThreshold').value);
+        const edgeAdjust = parseInt(document.getElementById('edgeAdjust').value);
+        const doDefringe = document.getElementById('defringe').checked;
+
+        // Step 1: Binary alpha threshold - eliminate semi-transparent pixels
+        for (let i = 0; i < result.length; i += 4) {
+          if (result[i + 3] > 0 && result[i + 3] < 255) {
+            result[i + 3] = result[i + 3] >= alphaThresh ? 255 : 0;
+          }
+        }
+
+        // Step 2: Edge adjust (erode or dilate the alpha mask)
+        if (edgeAdjust !== 0) {
+          const iterations = Math.abs(edgeAdjust);
+          const isErode = edgeAdjust > 0; // positive = shrink (erode)
+
+          for (let iter = 0; iter < iterations; iter++) {
+            const alphaCopy = new Uint8ClampedArray(w * h);
+            for (let y = 0; y < h; y++) {
+              for (let x = 0; x < w; x++) {
+                alphaCopy[y * w + x] = result[(y * w + x) * 4 + 3];
+              }
+            }
+
+            for (let y = 0; y < h; y++) {
+              for (let x = 0; x < w; x++) {
+                const idx = (y * w + x) * 4;
+                if (isErode) {
+                  // Erode: if any neighbor is transparent, make transparent
+                  if (alphaCopy[y * w + x] > 0) {
+                    let hasTransparentNeighbor = false;
+                    for (let dy = -1; dy <= 1; dy++) {
+                      for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const ny = y + dy, nx = x + dx;
+                        if (ny < 0 || ny >= h || nx < 0 || nx >= w) {
+                          hasTransparentNeighbor = true;
+                        } else if (alphaCopy[ny * w + nx] === 0) {
+                          hasTransparentNeighbor = true;
+                        }
+                      }
+                    }
+                    if (hasTransparentNeighbor) result[idx + 3] = 0;
+                  }
+                } else {
+                  // Dilate: if any neighbor is opaque, make opaque
+                  if (alphaCopy[y * w + x] === 0) {
+                    let hasOpaqueNeighbor = false;
+                    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                      for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const ny = y + dy, nx = x + dx;
+                        if (ny >= 0 && ny < h && nx >= 0 && nx < w && alphaCopy[ny * w + nx] > 0) {
+                          hasOpaqueNeighbor = true;
+                          const nIdx = (ny * w + nx) * 4;
+                          rSum += result[nIdx]; gSum += result[nIdx + 1]; bSum += result[nIdx + 2];
+                          count++;
+                        }
+                      }
+                    }
+                    if (hasOpaqueNeighbor && count > 0) {
+                      result[idx] = Math.round(rSum / count);
+                      result[idx + 1] = Math.round(gSum / count);
+                      result[idx + 2] = Math.round(bSum / count);
+                      result[idx + 3] = 255;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Step 3: Defringe - replace edge pixel colors with interior neighbor colors
+        if (doDefringe) {
+          // Find edge pixels (opaque pixels adjacent to transparent)
+          const alpha = new Uint8ClampedArray(w * h);
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              alpha[y * w + x] = result[(y * w + x) * 4 + 3];
+            }
+          }
+
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (alpha[y * w + x] === 0) continue;
+              // Check if this is an edge pixel
+              let isEdge = false;
+              for (let dy = -1; dy <= 1 && !isEdge; dy++) {
+                for (let dx = -1; dx <= 1 && !isEdge; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const ny = y + dy, nx = x + dx;
+                  if (ny < 0 || ny >= h || nx < 0 || nx >= w || alpha[ny * w + nx] === 0) {
+                    isEdge = true;
+                  }
+                }
+              }
+              if (!isEdge) continue;
+
+              // Collect colors from fully interior neighbors (opaque, non-edge)
+              let rSum = 0, gSum = 0, bSum = 0, count = 0;
+              for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const ny = y + dy, nx = x + dx;
+                  if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                  if (alpha[ny * w + nx] < 255) continue;
+                  // Check this neighbor is interior (not edge)
+                  let neighborIsEdge = false;
+                  for (let ddy = -1; ddy <= 1 && !neighborIsEdge; ddy++) {
+                    for (let ddx = -1; ddx <= 1 && !neighborIsEdge; ddx++) {
+                      const nny = ny + ddy, nnx = nx + ddx;
+                      if (nny < 0 || nny >= h || nnx < 0 || nnx >= w || alpha[nny * w + nnx] === 0) {
+                        neighborIsEdge = true;
+                      }
+                    }
+                  }
+                  if (!neighborIsEdge) {
+                    const nIdx = (ny * w + nx) * 4;
+                    rSum += result[nIdx]; gSum += result[nIdx + 1]; bSum += result[nIdx + 2];
+                    count++;
+                  }
+                }
+              }
+              if (count > 0) {
+                const idx = (y * w + x) * 4;
+                result[idx] = Math.round(rSum / count);
+                result[idx + 1] = Math.round(gSum / count);
+                result[idx + 2] = Math.round(bSum / count);
+              }
+            }
+          }
+        }
+
+        currentImageData = new ImageData(result, w, h);
+        ctx.clearRect(0, 0, w, h);
+        ctx.putImageData(currentImageData, 0, 0);
+        hideProcessing();
+        showToast('境界線を処理しました');
+      }, 50);
+    });
+  }
+
+  // --- Edge Color Mode ---
+  let currentEcMode = 'auto';
+  let isEcEyedropperActive = false;
+
+  function setEdgeColorMode(mode) {
+    currentEcMode = mode;
+    document.querySelectorAll('[data-ecmode]').forEach(t => t.classList.toggle('active', t.dataset.ecmode === mode));
+    document.getElementById('ecAutoControls').style.display = mode === 'auto' ? 'block' : 'none';
+    document.getElementById('ecManualControls').style.display = mode === 'manual' ? 'block' : 'none';
+  }
+
+  function toggleEcEyedropper() {
+    // Turn off normal eyedropper if active
+    if (isEyedropperActive) toggleEyedropper();
+    isEcEyedropperActive = !isEcEyedropperActive;
+    document.getElementById('ecEyedropperBtn').classList.toggle('active', isEcEyedropperActive);
+    canvas.style.cursor = isEcEyedropperActive ? 'crosshair' : 'default';
+  }
+
+  // Extend the canvas click to handle ec eyedropper
+  const origCanvasClick = canvas.onclick;
+  canvas.addEventListener('click', e => {
+    if (!isEcEyedropperActive || !currentImageData) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const idx = (y * canvas.width + x) * 4;
+    const r = currentImageData.data[idx];
+    const g = currentImageData.data[idx + 1];
+    const b = currentImageData.data[idx + 2];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('ecColor').value = hex;
+    document.getElementById('ecColorHex').value = hex;
+    document.getElementById('ecColorPreview').style.background = hex;
+    toggleEcEyedropper();
+    showToast(`輪郭色を取得しました: ${hex}`);
+  });
+
+  // --- Edge Color Normalization ---
+  function normalizeEdgeColor() {
+    if (!currentImageData) return;
+    pushHistory();
+    showProcessing('境界色を整えています...');
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const src = currentImageData.data;
+        const w = currentImageData.width;
+        const h = currentImageData.height;
+        const result = new Uint8ClampedArray(src);
+
+        const isManual = currentEcMode === 'manual';
+        const depth = parseInt(document.getElementById(isManual ? 'ecManualDepth' : 'ecDepth').value);
+        const blendPct = parseInt(document.getElementById(isManual ? 'ecManualBlend' : 'ecBlend').value) / 100;
+
+        // Build alpha map
+        const alpha = new Uint8Array(w * h);
+        for (let i = 0; i < w * h; i++) {
+          alpha[i] = src[i * 4 + 3];
+        }
+
+        // Build distance-from-edge map for opaque pixels
+        // distance = 0 means edge pixel (opaque, adjacent to transparent)
+        const distMap = new Int8Array(w * h).fill(-1); // -1 = transparent or unprocessed
+
+        // Pass 1: find edge pixels (distance 0)
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            if (alpha[y * w + x] === 0) continue;
+            let isEdge = false;
+            for (let dy = -1; dy <= 1 && !isEdge; dy++) {
+              for (let dx = -1; dx <= 1 && !isEdge; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= h || nx < 0 || nx >= w || alpha[ny * w + nx] === 0) {
+                  isEdge = true;
+                }
+              }
+            }
+            if (isEdge) distMap[y * w + x] = 0;
+          }
+        }
+
+        // Pass 2: expand distances up to depth
+        for (let d = 1; d < depth; d++) {
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (alpha[y * w + x] === 0 || distMap[y * w + x] >= 0) continue;
+              let adjacentToD = false;
+              for (let dy = -1; dy <= 1 && !adjacentToD; dy++) {
+                for (let dx = -1; dx <= 1 && !adjacentToD; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const ny = y + dy, nx = x + dx;
+                  if (ny >= 0 && ny < h && nx >= 0 && nx < w && distMap[ny * w + nx] === d - 1) {
+                    adjacentToD = true;
+                  }
+                }
+              }
+              if (adjacentToD) distMap[y * w + x] = d;
+            }
+          }
+        }
+
+        if (isManual) {
+          // Manual: apply specified color to edge pixels
+          const hex = document.getElementById('ecColor').value;
+          const tr = parseInt(hex.slice(1, 3), 16);
+          const tg = parseInt(hex.slice(3, 5), 16);
+          const tb = parseInt(hex.slice(5, 7), 16);
+
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const d = distMap[y * w + x];
+              if (d < 0 || d >= depth) continue;
+              const idx = (y * w + x) * 4;
+              // Fade blend based on distance from edge
+              const distFactor = 1 - (d / depth);
+              const blend = blendPct * distFactor;
+              result[idx]     = Math.round(src[idx]     * (1 - blend) + tr * blend);
+              result[idx + 1] = Math.round(src[idx + 1] * (1 - blend) + tg * blend);
+              result[idx + 2] = Math.round(src[idx + 2] * (1 - blend) + tb * blend);
+            }
+          }
+        } else {
+          // Auto: collect interior reference colors, then smooth edge pixels toward local average
+          // First, gather average interior color in local neighborhoods
+          const searchRadius = depth + 3;
+
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const d = distMap[y * w + x];
+              if (d < 0 || d >= depth) continue;
+
+              // Collect colors from deep interior pixels nearby
+              let rSum = 0, gSum = 0, bSum = 0, count = 0;
+              for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+                for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                  const ny = y + dy, nx = x + dx;
+                  if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                  const nd = distMap[ny * w + nx];
+                  // Only use pixels that are well inside (not edge zone) or distance == -1 but opaque (deep interior)
+                  if (alpha[ny * w + nx] > 0 && nd === -1) {
+                    const nIdx = (ny * w + nx) * 4;
+                    rSum += src[nIdx]; gSum += src[nIdx + 1]; bSum += src[nIdx + 2];
+                    count++;
+                  }
+                }
+              }
+
+              if (count > 0) {
+                const idx = (y * w + x) * 4;
+                const avgR = rSum / count;
+                const avgG = gSum / count;
+                const avgB = bSum / count;
+                const distFactor = 1 - (d / depth);
+                const blend = blendPct * distFactor;
+                result[idx]     = Math.round(src[idx]     * (1 - blend) + avgR * blend);
+                result[idx + 1] = Math.round(src[idx + 1] * (1 - blend) + avgG * blend);
+                result[idx + 2] = Math.round(src[idx + 2] * (1 - blend) + avgB * blend);
+              }
+            }
+          }
+        }
+
+        currentImageData = new ImageData(result, w, h);
+        ctx.clearRect(0, 0, w, h);
+        ctx.putImageData(currentImageData, 0, 0);
+        hideProcessing();
+        showToast('境界色を整えました');
+      }, 50);
+    });
+  }
+
+  // --- Color Decontamination Eyedropper ---
+  let isDeconEyedropperActive = false;
+
+  function toggleDeconEyedropper() {
+    if (isEyedropperActive) toggleEyedropper();
+    if (isEcEyedropperActive) toggleEcEyedropper();
+    isDeconEyedropperActive = !isDeconEyedropperActive;
+    document.getElementById('deconEyedropperBtn').classList.toggle('active', isDeconEyedropperActive);
+    canvas.style.cursor = isDeconEyedropperActive ? 'crosshair' : 'default';
+  }
+
+  canvas.addEventListener('click', e => {
+    if (!isDeconEyedropperActive || !currentImageData) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const idx = (y * canvas.width + x) * 4;
+    const r = currentImageData.data[idx];
+    const g = currentImageData.data[idx + 1];
+    const b = currentImageData.data[idx + 2];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('deconColor').value = hex;
+    document.getElementById('deconColorHex').value = hex;
+    document.getElementById('deconColorPreview').style.background = hex;
+    toggleDeconEyedropper();
+    showToast(`背景色を取得しました: ${hex}`);
+  });
+
+  // --- Color Decontamination ---
+  // Reverses alpha compositing: displayed = fg * a + bg * (1-a) → fg = (displayed - bg*(1-a)) / a
+  // For opaque edge pixels where bg color is baked in, estimates contamination from
+  // color similarity to background and proximity to alpha boundary.
+  function decontaminateColor() {
+    if (!currentImageData) return;
+    pushHistory();
+    showProcessing('色かぶりを除去しています...');
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const src = currentImageData.data;
+        const w = currentImageData.width;
+        const h = currentImageData.height;
+        const result = new Uint8ClampedArray(src);
+
+        const hex = document.getElementById('deconColor').value;
+        const bgR = parseInt(hex.slice(1, 3), 16);
+        const bgG = parseInt(hex.slice(3, 5), 16);
+        const bgB = parseInt(hex.slice(5, 7), 16);
+        const strength = parseInt(document.getElementById('deconStrength').value) / 100;
+        const depth = parseInt(document.getElementById('deconDepth').value);
+        const preThreshold = document.getElementById('deconPreThreshold').checked;
+
+        // Build alpha map
+        const alpha = new Uint8Array(w * h);
+        for (let i = 0; i < w * h; i++) {
+          alpha[i] = src[i * 4 + 3];
+        }
+
+        // Step 1: If preThreshold is on, fix semi-transparent pixels FIRST
+        // using proper alpha unmultiply before they get thresholded
+        if (preThreshold) {
+          for (let i = 0; i < w * h; i++) {
+            const a = alpha[i];
+            if (a > 0 && a < 255) {
+              const idx = i * 4;
+              const aF = a / 255; // normalized alpha
+              // Reverse: fg = (color - bg * (1 - a)) / a
+              const fgR = Math.max(0, Math.min(255, (result[idx]     - bgR * (1 - aF)) / aF));
+              const fgG = Math.max(0, Math.min(255, (result[idx + 1] - bgG * (1 - aF)) / aF));
+              const fgB = Math.max(0, Math.min(255, (result[idx + 2] - bgB * (1 - aF)) / aF));
+              result[idx]     = Math.round(result[idx]     + (fgR - result[idx])     * strength);
+              result[idx + 1] = Math.round(result[idx + 1] + (fgG - result[idx + 1]) * strength);
+              result[idx + 2] = Math.round(result[idx + 2] + (fgB - result[idx + 2]) * strength);
+            }
+          }
+        }
+
+        // Step 2: Build distance map from alpha boundary (for opaque pixels)
+        const distMap = new Int8Array(w * h).fill(-1);
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            if (alpha[y * w + x] === 0) continue;
+            let isEdge = false;
+            for (let dy = -1; dy <= 1 && !isEdge; dy++) {
+              for (let dx = -1; dx <= 1 && !isEdge; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= h || nx < 0 || nx >= w || alpha[ny * w + nx] === 0) {
+                  isEdge = true;
+                }
+              }
+            }
+            if (isEdge) distMap[y * w + x] = 0;
+          }
+        }
+
+        for (let d = 1; d < depth; d++) {
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              if (alpha[y * w + x] === 0 || distMap[y * w + x] >= 0) continue;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const ny = y + dy, nx = x + dx;
+                  if (ny >= 0 && ny < h && nx >= 0 && nx < w && distMap[ny * w + nx] === d - 1) {
+                    distMap[y * w + x] = d;
+                    dy = 2; break; // break both loops
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Step 3: For opaque edge pixels, find reference color from deep interior
+        // and estimate contamination amount based on how much the pixel leans toward bg color
+        const searchRadius = depth + 4;
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const d = distMap[y * w + x];
+            if (d < 0 || d >= depth) continue;
+            const idx = (y * w + x) * 4;
+            if (result[idx + 3] === 0) continue;
+
+            // Gather reference color from interior pixels
+            let refR = 0, refG = 0, refB = 0, refCount = 0;
+            for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+              for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                if (alpha[ny * w + nx] > 0 && distMap[ny * w + nx] === -1) {
+                  const nIdx = (ny * w + nx) * 4;
+                  refR += result[nIdx]; refG += result[nIdx + 1]; refB += result[nIdx + 2];
+                  refCount++;
+                }
+              }
+            }
+
+            if (refCount === 0) continue;
+            refR /= refCount; refG /= refCount; refB /= refCount;
+
+            const curR = result[idx], curG = result[idx + 1], curB = result[idx + 2];
+
+            // Estimate contamination: how much does current pixel lean toward bg vs reference?
+            const distToBg = Math.sqrt((curR-bgR)**2 + (curG-bgG)**2 + (curB-bgB)**2);
+            const distToRef = Math.sqrt((curR-refR)**2 + (curG-refG)**2 + (curB-refB)**2);
+            const refToBg = Math.sqrt((refR-bgR)**2 + (refG-bgG)**2 + (refB-bgB)**2);
+
+            if (refToBg < 10) continue; // Reference is too close to bg, can't distinguish
+
+            // Contamination ratio: 0 = pixel is like reference, 1 = pixel is like background
+            let contamination = 0;
+            if (distToBg + distToRef > 0) {
+              contamination = 1 - (distToBg / (distToBg + distToRef));
+            }
+
+            // Distance falloff: closer to edge = more contamination expected
+            const distFalloff = 1 - (d / depth);
+
+            // Compute corrected color by pushing away from background toward reference
+            const correctAmount = contamination * strength * distFalloff;
+
+            // Direction: from bg toward reference, but scale to push current color
+            // Use the reverse alpha composite idea:
+            // Estimate the "effective alpha" of contamination
+            const effAlpha = Math.max(0.1, 1 - contamination * distFalloff);
+            const recovR = Math.max(0, Math.min(255, (curR - bgR * (1 - effAlpha)) / effAlpha));
+            const recovG = Math.max(0, Math.min(255, (curG - bgG * (1 - effAlpha)) / effAlpha));
+            const recovB = Math.max(0, Math.min(255, (curB - bgB * (1 - effAlpha)) / effAlpha));
+
+            // Blend between current and recovered based on strength and distance
+            const blend = correctAmount;
+            result[idx]     = Math.round(curR + (recovR - curR) * blend);
+            result[idx + 1] = Math.round(curG + (recovG - curG) * blend);
+            result[idx + 2] = Math.round(curB + (recovB - curB) * blend);
+          }
+        }
+
+        currentImageData = new ImageData(result, w, h);
+        ctx.clearRect(0, 0, w, h);
+        ctx.putImageData(currentImageData, 0, 0);
+        hideProcessing();
+        showToast('色かぶりを除去しました');
+      }, 50);
+    });
+  }
+
+  // --- Download ---
+  function downloadImage() {
+    if (!currentImageData) return;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = currentImageData.width;
+    tempCanvas.height = currentImageData.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.putImageData(currentImageData, 0, 0);
+
+    tempCanvas.toBlob(blob => {
+      if (!blob) { showToast('保存に失敗しました', true); return; }
+      const url = URL.createObjectURL(blob);
+
+      // Try programmatic download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'transparent_output.png';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+        // Show fallback modal with the image for right-click save
+        showDownloadModal(url);
+      }, 500);
+
+      showToast('PNGを保存しました');
+    }, 'image/png');
+  }
+
+  function showDownloadModal(blobUrl) {
+    // Remove existing modal if present
+    const existing = document.getElementById('downloadModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'downloadModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;background:rgba(10,14,23,0.9);z-index:200;
+      display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+      backdrop-filter:blur(6px);cursor:pointer;
+    `;
+    modal.innerHTML = `
+      <p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;max-width:400px;">
+        ダウンロードが始まらない場合は、下の画像を<br><strong style="color:var(--accent);">右クリック →「名前を付けて画像を保存」</strong>してください
+      </p>
+      <img src="${blobUrl}" style="max-width:80vw;max-height:60vh;border-radius:8px;border:1px solid var(--border);background-image:
+        linear-gradient(45deg,#1a1f2e 25%,transparent 25%),
+        linear-gradient(-45deg,#1a1f2e 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,#1a1f2e 75%),
+        linear-gradient(-45deg,transparent 75%,#1a1f2e 75%);
+        background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0px;" />
+      <button onclick="this.parentElement.remove()" style="
+        padding:10px 28px;border:1px solid var(--border);border-radius:8px;
+        background:var(--bg-card);color:var(--text-secondary);cursor:pointer;font-family:inherit;font-size:0.85rem;
+      ">閉じる</button>
+    `;
+    // Click backdrop to close
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+</script>
+</body>
+</html>
